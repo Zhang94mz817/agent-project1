@@ -1,0 +1,42 @@
+# --- 1. 依赖与第三方库 (Token 杀手) ---
+node_modules/
+bower_components/
+vendor/
+venv/
+.venv/
+
+# --- 2. 构建产物与缓存 ---
+dist/
+build/
+.next/
+.nuxt/
+out/
+bin/
+obj/
+*.pyc
+.cache/
+
+# --- 3. 媒体与二进制文件 (Claude 看不懂且极贵) ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.pdf
+*.zip
+*.gz
+*.tar
+*.mp4
+*.mov
+*.wav
+*.mp3
+
+
+# --- 4. 系统与私密文件 ---
+.DS_Store
+.git/
+.env
+.env.*
+*.pem
+*.key
