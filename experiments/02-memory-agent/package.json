@@ -3,6 +3,7 @@
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
-    "undici": "^7.0.0"
+    "undici": "^7.0.0",
+    "ws": "^8.19.0"
   }
 }

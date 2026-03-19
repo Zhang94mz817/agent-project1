@@ -8,3 +8,5 @@ dist/
 .next/
 .DS_Store
 *.log
+memory.json
+.claude/settings.local.json

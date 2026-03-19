@@ -10,7 +10,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { createServer } from "http";
-import { createHash } from "crypto";
+import { WebSocketServer } from "ws";
 import { ProxyAgent, setGlobalDispatcher } from "undici";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -272,96 +272,6 @@ async function runAgent(client, memory, userMessage, emit) {
 }
 
 // ============================================================
-// WebSocket 帧处理 (纯 Node.js 实现，无需 ws 包)
-// ============================================================
-
-function acceptWebSocket(req, socket) {
-  const raw = req.headers["sec-websocket-key"];
-  const key = Array.isArray(raw) ? raw[0]?.trim() : String(raw || "").trim();
-  if (!key) {
-    socket.destroy();
-    return null;
-  }
-  const GUID = "258EAFA5-E914-47DA-95CA-5AB9FBD37A10";
-  const acceptKey = createHash("sha1")
-    .update(key + GUID)
-    .digest("base64");
-
-  socket.write(
-    "HTTP/1.1 101 Switching Protocols\r\n" +
-      "Upgrade: websocket\r\n" +
-      "Connection: Upgrade\r\n" +
-      `Sec-WebSocket-Accept: ${acceptKey}\r\n` +
-      "\r\n"
-  );
-  return socket;
-}
-
-function decodeWSFrame(buffer) {
-  if (buffer.length < 2) return null;
-
-  const secondByte = buffer[1];
-  const isMasked = (secondByte & 0x80) !== 0;
-  let payloadLen = secondByte & 0x7f;
-  let offset = 2;
-
-  if (payloadLen === 126) {
-    if (buffer.length < 4) return null;
-    payloadLen = buffer.readUInt16BE(2);
-    offset = 4;
-  } else if (payloadLen === 127) {
-    if (buffer.length < 10) return null;
-    payloadLen = Number(buffer.readBigUInt64BE(2));
-    offset = 10;
-  }
-
-  if (isMasked) {
-    if (buffer.length < offset + 4 + payloadLen) return null;
-    const mask = buffer.slice(offset, offset + 4);
-    offset += 4;
-    const payload = buffer.slice(offset, offset + payloadLen);
-    for (let i = 0; i < payload.length; i++) {
-      payload[i] ^= mask[i % 4];
-    }
-    return {
-      opcode: buffer[0] & 0x0f,
-      payload: payload.toString("utf-8"),
-      totalLength: offset + payloadLen,
-    };
-  }
-
-  if (buffer.length < offset + payloadLen) return null;
-  return {
-    opcode: buffer[0] & 0x0f,
-    payload: buffer.slice(offset, offset + payloadLen).toString("utf-8"),
-    totalLength: offset + payloadLen,
-  };
-}
-
-function encodeWSFrame(data) {
-  const payload = Buffer.from(data, "utf-8");
-  const len = payload.length;
-
-  let header;
-  if (len < 126) {
-    header = Buffer.alloc(2);
-    header[0] = 0x81; // FIN + text
-    header[1] = len;
-  } else if (len < 65536) {
-    header = Buffer.alloc(4);
-    header[0] = 0x81;
-    header[1] = 126;
-    header.writeUInt16BE(len, 2);
-  } else {
-    header = Buffer.alloc(10);
-    header[0] = 0x81;
-    header[1] = 127;
-    header.writeBigUInt64BE(BigInt(len), 2);
-  }
-  return Buffer.concat([header, payload]);
-}
-
-// ============================================================
 // HTTP + WebSocket 服务器
 // ============================================================
 
@@ -410,35 +320,21 @@ const server = createServer((req, res) => {
   res.end("Not Found");
 });
 
-// WebSocket upgrade
-server.on("upgrade", (req, socket, head) => {
-  if (req.headers.upgrade?.toLowerCase() !== "websocket") {
-    socket.destroy();
-    return;
-  }
+// WebSocket 服务器
+const wss = new WebSocketServer({ server });
 
-  // Debug: log handshake headers (remove if noisy)
-  try {
-    console.log("🔎 WS upgrade url=", req.url);
-    console.log("🔎 WS rawHeaders=", req.rawHeaders);
-    const rawKey = req.headers["sec-websocket-key"];
-    console.log("🔎 WS header key=", JSON.stringify(rawKey), "len=", String(rawKey || "").length);
-  } catch {}
-
-  const wsSocket = acceptWebSocket(req, socket);
-  if (!wsSocket) return;
+wss.on("connection", (ws) => {
   console.log("🔌 WebSocket 客户端已连接");
 
   let busy = false;
-  let wsBuffer = Buffer.alloc(0);
 
   const send = (obj) => {
     try {
-      if (!socket.destroyed) {
-        socket.write(encodeWSFrame(JSON.stringify(obj)));
+      if (ws.readyState === 1) { // OPEN
+        ws.send(JSON.stringify(obj));
       }
-    } catch {
-      // socket closed
+    } catch (e) {
+      console.error("发送消息失败:", e.message);
     }
   };
 
@@ -453,84 +349,52 @@ server.on("upgrade", (req, socket, head) => {
   }));
   send({ type: "history", messages: history });
 
-  socket.on("data", (chunk) => {
-    wsBuffer = Buffer.concat([wsBuffer, chunk]);
+  ws.on("message", (data) => {
+    let msg;
+    try {
+      msg = JSON.parse(data.toString());
+    } catch {
+      return;
+    }
 
-    while (true) {
-      const frame = decodeWSFrame(wsBuffer);
-      if (!frame) break;
-      wsBuffer = wsBuffer.slice(frame.totalLength);
-
-      // opcode 8 = close
-      if (frame.opcode === 8) {
-        console.log("🔌 WebSocket 客户端断开");
-        // Send close frame back
-        const closeFrame = Buffer.alloc(2);
-        closeFrame[0] = 0x88;
-        closeFrame[1] = 0;
-        try { socket.write(closeFrame); } catch {}
-        socket.end();
+    if (msg.type === "chat") {
+      if (busy) {
+        send({ type: "error", message: "Agent 正在处理中，请稍候..." });
+        return;
+      }
+      busy = true;
+      const userContent = String(msg.content || "").trim();
+      if (!userContent) {
+        busy = false;
         return;
       }
 
-      // opcode 9 = ping, respond with pong
-      if (frame.opcode === 9) {
-        const pong = Buffer.alloc(2);
-        pong[0] = 0x8a;
-        pong[1] = 0;
-        try { socket.write(pong); } catch {}
-        continue;
-      }
+      console.log(`💬 用户: ${userContent}`);
+      send({ type: "user_echo", content: userContent });
 
-      // opcode 1 = text
-      if (frame.opcode !== 1) continue;
-
-      let msg;
-      try {
-        msg = JSON.parse(frame.payload);
-      } catch {
-        continue;
-      }
-
-      if (msg.type === "chat") {
-        if (busy) {
-          send({ type: "error", message: "Agent 正在处理中，请稍候..." });
-          continue;
-        }
-        busy = true;
-        const userContent = String(msg.content || "").trim();
-        if (!userContent) {
+      runAgent(client, memory, userContent, send)
+        .catch((e) => {
+          console.error(`❌ Agent 错误: ${e.message}`);
+          send({ type: "error", message: e.message });
+        })
+        .finally(() => {
           busy = false;
-          continue;
-        }
+        });
+    }
 
-        console.log(`💬 用户: ${userContent}`);
-        send({ type: "user_echo", content: userContent });
-
-        runAgent(client, memory, userContent, send)
-          .catch((e) => {
-            console.error(`❌ Agent 错误: ${e.message}`);
-            send({ type: "error", message: e.message });
-          })
-          .finally(() => {
-            busy = false;
-          });
-      }
-
-      if (msg.type === "clear_memory") {
-        memory.clear();
-        send({ type: "memory_status", ...memory.getStatus() });
-        send({ type: "memory_cleared" });
-        console.log("🧹 客户端请求清除记忆");
-      }
+    if (msg.type === "clear_memory") {
+      memory.clear();
+      send({ type: "memory_status", ...memory.getStatus() });
+      send({ type: "memory_cleared" });
+      console.log("🧹 客户端请求清除记忆");
     }
   });
 
-  socket.on("close", () => {
+  ws.on("close", () => {
     console.log("🔌 WebSocket 连接关闭");
   });
 
-  socket.on("error", (err) => {
+  ws.on("error", (err) => {
     console.error("WebSocket 错误:", err.message);
   });
 });
