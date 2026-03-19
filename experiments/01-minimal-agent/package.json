@@ -1,0 +1,9 @@
+{
+  "name": "01-minimal-agent",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "openai": "^6.31.0",
+    "undici": "^7.24.4"
+  }
+}
