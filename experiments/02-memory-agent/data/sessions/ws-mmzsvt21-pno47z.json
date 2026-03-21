@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "ws-mmzsvt21-pno47z",
+  "userId": "default",
+  "projectId": "default",
+  "summary": "",
+  "messages": [
+    {
+      "role": "user",
+      "content": "你是谁",
+      "createdAt": "2026-03-21T04:00:59.571Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我是 experiments/02-memory-agent 中的 memory demo 助手。\n\n我的主要特点是：\n\n1. **分层记忆管理**：我会根据信息的性质，将其存储在不同的记忆层：\n   - **用户记忆**（user memory）：你的长期偏好和个人信息\n   - **项目记忆**（project memory）：这个实验项目的固定事实和约定\n   - **会话记忆**（session memory）：当前对话的上下文和临时信息\n\n2. **工具能力**：我可以使用多种工具，包括：\n   - 获取当前时间\n   - 计算数学表达式\n   - 读取本地文件\n   - 抓取网页内容\n\n3. **智能记忆策略**：我只会将真正重要、长期有效、高置信度的信息存入长期记忆，避免污染记忆库。临时的、一次性的信息会保留在会话记忆中。\n\n目前，我还没有关于你的任何记忆。如果你有什么想让我记住的偏好或信息，可以明确告诉我！\n\n有什么我可以帮助你的吗？",
+      "createdAt": "2026-03-21T04:01:07.642Z"
+    }
+  ],
+  "metadata": {
+    "summarizedMessageCount": 0,
+    "migratedFromLegacy": false,
+    "lastSummaryAt": null
+  },
+  "createdAt": "2026-03-21T04:00:50.906Z",
+  "updatedAt": "2026-03-21T04:01:07.642Z"
+}
