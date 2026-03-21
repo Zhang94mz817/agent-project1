@@ -10,3 +10,4 @@ dist/
 *.log
 memory.json
 .claude/settings.local.json
+.claude/worktrees/agent-a3e3415a
