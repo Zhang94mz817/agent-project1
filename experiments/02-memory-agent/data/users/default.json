@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "default",
+  "profile": {
+    "name": null,
+    "occupation": null,
+    "experienceYears": null,
+    "languagePreference": null,
+    "responseStyle": null
+  },
+  "preferences": [],
+  "facts": [],
+  "createdAt": "2026-03-20T00:00:00.000Z",
+  "updatedAt": "2026-03-20T00:00:00.000Z"
+}

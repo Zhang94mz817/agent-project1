@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "ws-mmyn16kj-7tg1am",
+  "userId": "default",
+  "projectId": "default",
+  "summary": "",
+  "messages": [
+    {
+      "role": "user",
+      "content": "https://code.claude.com/docs/en/channels.md\n这个页面讲了什么内容",
+      "createdAt": "2026-03-20T08:30:02.632Z"
+    },
+    {
+      "role": "assistant",
+      "content": "这个页面介绍了 **Claude Code 的 Channels（频道）功能**，主要内容包括：\n\n## 核心概念\n- **Channels 是什么**：允许将外部事件（消息、警报、webhook）推送到正在运行的 Claude Code 会话中，让 Claude 能够在你不在终端时对事件做出反应\n- 这是一个**研究预览**功能，需要 Claude Code v2.1.80 或更高版本\n- 必须使用 claude.ai 登录（不支持 Console 和 API key 认证）\n\n## 主要特性\n1. **双向通信**：Claude 可以读取事件并通过同一频道回复（如聊天桥接）\n2. **事件推送**：仅在会话打开时接收事件，可在后台进程或持久终端中运行以实现\"始终在线\"\n3. **插件形式安装**：使用自己的凭证配置\n\n## 支持的频道\n目前支持：\n- **Telegram**：通过 BotFather 创建机器人获取 token\n- **Discord**：在开发者门户创建应用并获取 bot token\n- **Fakechat**：本地演示工具\n\n## 安装和使用流程\n1. 使用 `/plugin install` 安装频道插件\n2. 配置凭证（`/telegram:configure` 或 `/discord:configure`）\n3. 使用 `--channels` 参数重启 Claude Code\n4. 通过配对码（pairing code）进行配对\n5. 设置访问策略（allowlist）限制权限\n\n## 安全控制\n- 发送者白名单机制\n- 配对流程确保授权\n- 企业组织需要显式启用该功能\n\n页面还提供了构建自定义频道的参考文档链接。",
+      "createdAt": "2026-03-20T08:30:19.685Z"
+    }
+  ],
+  "metadata": {
+    "summarizedMessageCount": 0,
+    "migratedFromLegacy": false,
+    "lastSummaryAt": null
+  },
+  "createdAt": "2026-03-20T08:29:17.828Z",
+  "updatedAt": "2026-03-20T08:30:19.685Z"
+}

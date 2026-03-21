@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "autoMemoryEnabled": true,
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git diff --name-only --diff-filter=ACM | grep -E '\\.(js|mjs)$' | while IFS= read -r f; do [ -n \"$f\" ] && node --check \"$f\"; done",
+            "timeout": 30,
+            "statusMessage": "Running syntax checks"
+          },
+          {
+            "type": "agent",
+            "prompt": "Review the current uncommitted code changes in this repository for bugs introduced by the latest code edit. Focus on changed code only. Check for syntax errors, broken imports, wrong function calls, inconsistent data flow, obvious logic regressions, and mismatches with nearby code. Read the current diff and any directly relevant files. Report only concrete issues. If no obvious bug is found, say exactly: 未发现明显 bug。",
+            "timeout": 90,
+            "statusMessage": "Reviewing changed code for bugs"
+          }
+        ]
+      }
+    ]
+  }
+}

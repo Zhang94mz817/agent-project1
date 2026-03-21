@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "default",
+  "name": "02-memory-agent",
+  "facts": [
+    {
+      "key": "project.goal",
+      "value": "这是一个用于演示分层 memory、tool use 与多轮对话的实验。",
+      "confidence": "high",
+      "source": "seed"
+    },
+    {
+      "key": "project.runtime",
+      "value": "CLI 与 Web 共享同一套 lib/ 里的 MemoryService、tools 和 runAgent。",
+      "confidence": "high",
+      "source": "seed"
+    },
+    {
+      "key": "project.dataLayout",
+      "value": "运行时数据位于 data/users、data/projects、data/sessions。",
+      "confidence": "high",
+      "source": "seed"
+    }
+  ],
+  "createdAt": "2026-03-20T00:00:00.000Z",
+  "updatedAt": "2026-03-20T00:00:00.000Z"
+}
