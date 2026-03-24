@@ -4,7 +4,7 @@ import { MemorySection } from './MemorySection'
 import { ToolsSection } from './ToolsSection'
 import { ActionsSection } from './ActionsSection'
 
-type Props = WebSocketState
+type Props = WebSocketState & { collapsed: boolean }
 
 export function Sidebar({
   status,
@@ -13,9 +13,10 @@ export function Sidebar({
   tools,
   busy,
   send,
+  collapsed,
 }: Props) {
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="sidebar-header">
         <h1>Memory Agent</h1>
         <div className="subtitle">实验 02 — 分层记忆 + 会话隔离</div>

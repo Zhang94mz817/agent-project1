@@ -37,6 +37,14 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  transition: width 0.25s, min-width 0.25s, padding 0.25s;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
 }
 
 .sidebar-header, .sidebar-section, .sidebar-actions { padding: 18px 20px; }
@@ -68,6 +76,49 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sidebar-collapsible {
+  padding: 0;
+}
+.sidebar-collapsible-header {
+  cursor: pointer;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+.sidebar-collapsible-header h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+.sidebar-collapsible-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 9px;
+  padding: 0 5px;
+}
+.sidebar-collapsible-arrow {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+.sidebar-collapsible.open .sidebar-collapsible-arrow {
+  transform: rotate(90deg);
+}
+.sidebar-collapsible-body {
+  padding: 0 20px 18px;
 }
 
 .memory-list {
@@ -251,6 +302,18 @@ body {
 .toggle-switch input:checked + .toggle-track { background: var(--accent); }
 .toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); }
 
+.sidebar-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+.sidebar-toggle:hover { background: var(--surface-hover); }
+
 .system-msg {
   max-width: 860px;
   margin: 0 auto;
@@ -273,6 +336,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: var(--bg-secondary);
 }
 
 .chat-header {

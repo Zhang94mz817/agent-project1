@@ -6,9 +6,10 @@ interface Props {
   chatItems: ChatItem[]
   busy: boolean
   send: SendFn
+  onToggleSidebar: () => void
 }
 
-export function ChatArea({ chatItems, busy, send }: Props) {
+export function ChatArea({ chatItems, busy, send, onToggleSidebar }: Props) {
   function handleSend(text: string) {
     send({ type: 'chat', content: text })
   }
@@ -16,7 +17,10 @@ export function ChatArea({ chatItems, busy, send }: Props) {
   return (
     <div className="main">
       <div className="chat-header">
-        <span>对话</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button className="sidebar-toggle" onClick={onToggleSidebar} title="切换侧边栏">☰</button>
+          <span>对话</span>
+        </div>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>claude-sonnet-4.5</span>
       </div>
       <MessageList chatItems={chatItems} />
