@@ -217,6 +217,63 @@
   .btn:hover { background: var(--surface-hover); }
   .btn-danger { border-color: #f3c2c2; color: var(--error); background: #fff5f5; }
   .btn-danger:hover { background: #feecec; }
+  .btn-summarize { border-color: #c7d9f8; color: var(--accent); background: #f0f6ff; }
+  .btn-summarize:hover { background: #e4efff; }
+  .btn-summarize:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .skill-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    gap: 8px;
+  }
+  .skill-info { min-width: 0; flex: 1; }
+  .skill-name { font-weight: 500; font-size: 12px; font-family: "SF Mono", "Fira Code", monospace; }
+  .skill-desc { color: var(--text-secondary); font-size: 11px; margin-top: 2px; }
+
+  .toggle-switch { flex-shrink: 0; position: relative; width: 34px; height: 18px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: #c8d1db;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  }
+  .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+  .toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); }
+
+  .system-msg {
+    max-width: 860px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 6px 24px;
+  }
+  .system-msg-inner {
+    background: #f0f6ff;
+    border: 1px solid #c7d9f8;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--accent);
+    white-space: pre-wrap;
+    font-family: "SF Mono", "Fira Code", monospace;
+  }
 
   .main {
     flex: 1;
@@ -454,7 +511,13 @@
   </div>
 
   <div class="sidebar-section">
-    <h3>可用工具</h3>
+    <h3>记忆 Skills</h3>
+    <div id="memory-skills-list"></div>
+    <button class="btn btn-summarize" id="summarize-btn" style="margin-top:10px">立即压缩会话</button>
+  </div>
+
+  <div class="sidebar-section">
+    <h3>能力</h3>
     <div id="tools-list"></div>
   </div>
 
@@ -515,6 +578,8 @@ const userFactsList = document.getElementById('user-facts-list');
 const projectFacts = document.getElementById('project-facts');
 const projectFactsList = document.getElementById('project-facts-list');
 const toolsList = document.getElementById('tools-list');
+const memorySkillsList = document.getElementById('memory-skills-list');
+const summarizeBtn = document.getElementById('summarize-btn');
 const clearBtn = document.getElementById('clear-btn');
 
 function connect() {
@@ -602,6 +667,14 @@ function handleMessage(msg) {
       projectFacts.textContent = msg.projectFactCount || 0;
       renderProjectFacts(msg.projectFacts || []);
       if (msg.sessionId) sessionIdEl.textContent = msg.sessionId;
+      break;
+    case 'force_summarize_result':
+      appendSystemMessage(
+        msg.summarized === 0
+          ? '当前没有可压缩的消息。'
+          : `📝 已压缩 ${msg.summarized} 条消息\n\n${msg.summary}`
+      );
+      summarizeBtn.disabled = false;
       break;
     case 'memory_cleared':
       messagesEl.innerHTML = '';
@@ -768,11 +841,37 @@ function appendError(message) {
   messagesEl.appendChild(div);
 }
 
+function appendSystemMessage(text) {
+  const div = document.createElement('div');
+  div.className = 'system-msg';
+  div.innerHTML = `<div class="system-msg-inner">${escapeHtml(text)}</div>`;
+  messagesEl.appendChild(div);
+  scrollToBottom();
+}
+
 function renderTools(toolsArr) {
-  const icons = { get_current_time: '🕐', calculator: '🔢', read_file: '📄', web_fetch: '🌐' };
-  toolsList.innerHTML = toolsArr.map((tool) => `
+  const MEMORY_SKILLS = new Set(['memory_upsert', 'memory_query']);
+  const capabilityIcons = { get_current_time: '🕐', calculator: '🔢', read_file: '📄', web_fetch: '🌐' };
+
+  const memoryTools = toolsArr.filter((t) => MEMORY_SKILLS.has(t.name));
+  const capTools = toolsArr.filter((t) => !MEMORY_SKILLS.has(t.name));
+
+  memorySkillsList.innerHTML = memoryTools.map((tool) => `
+    <div class="skill-item">
+      <div class="skill-info">
+        <div class="skill-name">${escapeHtml(tool.name)}</div>
+        <div class="skill-desc">${escapeHtml(tool.description.slice(0, 60))}…</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" checked onchange="onToolToggle('${escapeHtml(tool.name)}', this.checked)">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  `).join('');
+
+  toolsList.innerHTML = capTools.map((tool) => `
     <div class="tool-item">
-      <div class="tool-icon">${icons[tool.name] || '🔧'}</div>
+      <div class="tool-icon">${capabilityIcons[tool.name] || '🔧'}</div>
       <div>
         <div class="tool-name">${escapeHtml(tool.name)}</div>
         <div class="tool-desc">${escapeHtml(tool.description)}</div>
@@ -784,6 +883,7 @@ function renderTools(toolsArr) {
 function setBusy(nextBusy) {
   busy = nextBusy;
   sendBtn.disabled = nextBusy;
+  summarizeBtn.disabled = nextBusy;
   inputEl.disabled = nextBusy;
   if (!nextBusy) inputEl.focus();
 }
@@ -830,11 +930,19 @@ inputEl.addEventListener('input', () => {
 });
 
 sendBtn.addEventListener('click', sendMessage);
+summarizeBtn.addEventListener('click', () => {
+  summarizeBtn.disabled = true;
+  send({ type: 'force_summarize' });
+});
 clearBtn.addEventListener('click', () => {
   if (confirm('确定要清除当前浏览器会话的 session 历史吗？user/project memory 会保留。')) {
     send({ type: 'clear_memory' });
   }
 });
+
+function onToolToggle(name, enabled) {
+  send({ type: 'set_tool_enabled', name, enabled });
+}
 
 connect();
 </script>

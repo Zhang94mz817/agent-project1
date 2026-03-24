@@ -1,13 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { createServer } from "http";
+import { extname, join, resolve } from "path";
 import { WebSocketServer } from "ws";
 import {
+  CLIENT_DIST_DIR,
   DEFAULT_MODEL,
   DEFAULT_PORT,
   DEFAULT_PROJECT_ID,
   DEFAULT_USER_ID,
-  HTML_FILE,
   readSystemPrompt,
 } from "./lib/config.mjs";
 import { MemoryService } from "./lib/memory/service.mjs";
@@ -32,16 +33,29 @@ function createMemoryService(sessionId) {
   });
 }
 
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.ico': 'image/x-icon',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+};
+
 const server = createServer((req, res) => {
-  if (req.method === "GET" && req.url === "/") {
-    try {
-      const html = readFileSync(HTML_FILE, "utf-8");
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(html);
-    } catch {
-      res.writeHead(500);
-      res.end("index.html not found");
+  if (req.method === "GET" && !req.url.startsWith("/api")) {
+    const urlPath = req.url === "/" ? "/index.html" : (req.url || "/").split("?")[0];
+    const abs = resolve(join(CLIENT_DIST_DIR, urlPath));
+    if (!abs.startsWith(CLIENT_DIST_DIR)) {
+      res.writeHead(403);
+      res.end();
+      return;
     }
+    const filePath = existsSync(abs) ? abs : join(CLIENT_DIST_DIR, "index.html");
+    const mime = MIME[extname(filePath)] || "text/html; charset=utf-8";
+    res.writeHead(200, { "Content-Type": mime });
+    res.end(readFileSync(filePath));
     return;
   }
 
@@ -61,6 +75,10 @@ wss.on("connection", (ws) => {
   const sessionId = createSessionId();
   const memoryService = createMemoryService(sessionId);
   let busy = false;
+  const enabledTools = new Set([
+    "get_current_time", "calculator", "read_file", "web_fetch",
+    "memory_upsert", "memory_query",
+  ]);
 
   const send = (obj) => {
     try {
@@ -105,6 +123,7 @@ wss.on("connection", (ws) => {
         memoryService,
         userMessage: userContent,
         systemPrompt,
+        enabledTools,
         emit: send,
       })
         .catch((error) => {
@@ -114,6 +133,28 @@ wss.on("connection", (ws) => {
         .finally(() => {
           busy = false;
         });
+    }
+
+    if (msg.type === "set_tool_enabled") {
+      const name = String(msg.name || "");
+      if (msg.enabled) {
+        enabledTools.add(name);
+        console.log(`🔧 [${sessionId}] 启用工具: ${name}`);
+      } else {
+        enabledTools.delete(name);
+        console.log(`🔧 [${sessionId}] 禁用工具: ${name}`);
+      }
+    }
+
+    if (msg.type === "force_summarize") {
+      if (busy) {
+        send({ type: "error", message: "Agent 正在处理中，请稍候..." });
+        return;
+      }
+      const result = memoryService.forceSummarizeSession();
+      send({ type: "force_summarize_result", summarized: result.summarized, summary: result.summary });
+      send({ type: "memory_status", ...memoryService.getStatus() });
+      console.log(`📝 [${sessionId}] 强制压缩: ${result.summarized} 条消息`);
     }
 
     if (msg.type === "clear_memory") {
