@@ -1,3 +1,4 @@
+import "./runtime-env.mjs";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { join, dirname } from "path";
@@ -15,11 +16,17 @@ const systemPrompt = readFileSync(join(__dirname, "../prompts/reflect.md"), "utf
  */
 export async function reflect(goal, plan, results) {
   const client = new Anthropic();
+  const resultMap = new Map(results.map((result) => [result.stepId, result]));
 
   const stepsReport = plan.steps
     .map((step) => {
-      const r = results.find((x) => x.stepId === step.id);
-      return `步骤 ${step.id}：${step.title}\n工具：${step.tool}\n结果：${r ? r.result : "未执行"}`;
+      const result = resultMap.get(step.id);
+      return [
+        `步骤 ${step.id}：${step.title}`,
+        `工具：${step.tool}`,
+        `状态：${result ? (result.ok ? "成功" : "失败") : "未执行"}`,
+        `结果：${result ? result.result : "未执行"}`,
+      ].join("\n");
     })
     .join("\n\n");
 

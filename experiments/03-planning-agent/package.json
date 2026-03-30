@@ -2,7 +2,8 @@
   "name": "03-planning-agent",
   "type": "module",
   "scripts": {
-    "web": "node server.mjs"
+    "web": "node server.mjs",
+    "test": "node --test --experimental-test-isolation=none"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",

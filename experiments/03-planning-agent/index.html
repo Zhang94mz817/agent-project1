@@ -83,6 +83,20 @@
 
   .reflect-empty { color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align: center; }
   .reflect-content { font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .reflect-body { display: flex; flex-direction: column; gap: 16px; }
+  .history-section { border-top: 1px solid var(--border); padding-top: 16px; }
+  .history-title { font-size: 12px; font-weight: 600; letter-spacing: 0.4px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; }
+  .history-empty { color: var(--text-muted); font-size: 13px; padding: 10px 0; text-align: center; }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item { border: 1px solid var(--border); border-radius: var(--radius-sm); background: #f8fafc; padding: 10px 12px; }
+  .history-item.completed { border-color: #bbf7d0; background: #f0fdf4; }
+  .history-item.completed_with_errors { border-color: #fde68a; background: #fffbeb; }
+  .history-item.failed { border-color: #fca5a5; background: #fff1f2; }
+  .history-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .history-goal { font-size: 13px; font-weight: 500; line-height: 1.4; flex: 1; }
+  .history-status { font-size: 11px; border-radius: 999px; padding: 2px 8px; background: #e2e8f0; color: var(--text-secondary); }
+  .history-meta { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .history-preview { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
 
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -121,9 +135,14 @@
 
   <div class="panel-reflect">
     <div class="panel-header"><h2>反思报告</h2></div>
-    <div class="panel-body">
+    <div class="panel-body reflect-body">
       <div class="reflect-empty" id="reflectEmpty">执行完成后，反思报告将显示在这里</div>
       <div class="reflect-content" id="reflectContent" style="display:none"></div>
+      <div class="history-section">
+        <div class="history-title">最近任务</div>
+        <div class="history-empty" id="historyEmpty">暂无历史任务</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
     </div>
   </div>
 
@@ -133,199 +152,6 @@
   </div>
 </div>
 
-<script>
-const inputEl = document.getElementById('inputEl');
-const sendBtn = document.getElementById('sendBtn');
-const statusBadge = document.getElementById('statusBadge');
-const planBody = document.getElementById('planBody');
-const planEmpty = document.getElementById('planEmpty');
-const planActions = document.getElementById('planActions');
-const approveBtn = document.getElementById('approveBtn');
-const rejectBtn = document.getElementById('rejectBtn');
-const rejectInput = document.getElementById('rejectInput');
-const rejectConfirmRow = document.getElementById('rejectConfirmRow');
-const execLog = document.getElementById('execLog');
-const reflectEmpty = document.getElementById('reflectEmpty');
-const reflectContent = document.getElementById('reflectContent');
-
-let ws = null;
-let busy = false;
-let currentPlan = null;
-
-function setStatus(text, isBusy) {
-  statusBadge.textContent = text;
-  statusBadge.className = 'status-badge' + (isBusy ? ' busy' : '');
-  busy = isBusy;
-  sendBtn.disabled = isBusy;
-  inputEl.disabled = isBusy;
-}
-
-function connect() {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}`);
-  ws.onopen = () => setStatus('已连接', false);
-  ws.onclose = () => { setStatus('已断开', false); setTimeout(connect, 2000); };
-  ws.onerror = () => setStatus('连接错误', false);
-  ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
-}
-
-function send(obj) {
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
-}
-
-function handleMessage(msg) {
-  switch (msg.type) {
-    case 'ready':
-      setStatus('就绪', false);
-      break;
-    case 'planning':
-      setStatus('规划中…', true);
-      addLog('info', '🤔 ' + msg.message);
-      currentPlan = null;
-      planActions.style.display = 'none';
-      planEmpty.textContent = '正在生成计划…';
-      planEmpty.style.display = 'block';
-      planBody.querySelectorAll('.plan-goal, .step-item').forEach(el => el.remove());
-      reflectEmpty.style.display = 'block';
-      reflectContent.style.display = 'none';
-      break;
-    case 'plan_ready':
-      currentPlan = msg.plan;
-      renderPlan(msg.plan);
-      setStatus('等待确认', true);
-      break;
-    case 'executing':
-      setStatus('执行中…', true);
-      addLog('info', '⚙️ ' + msg.message);
-      planActions.style.display = 'none';
-      break;
-    case 'step_start':
-      updateStepUI(msg.stepId, 'running');
-      addLog('step-start', `▶ 步骤 ${msg.stepId}：${msg.title}`, msg.tool !== 'none' ? `工具：${msg.tool}` : null);
-      break;
-    case 'step_done':
-      updateStepUI(msg.stepId, 'done');
-      addLog('step-done', `✓ 步骤 ${msg.stepId} 完成`, msg.result);
-      break;
-    case 'reflecting':
-      setStatus('反思中…', true);
-      addLog('info', '💭 ' + msg.message);
-      break;
-    case 'reflect_ready':
-      reflectEmpty.style.display = 'none';
-      reflectContent.style.display = 'block';
-      reflectContent.textContent = msg.reflection;
-      setStatus('完成', false);
-      addLog('info', '✅ 任务完成');
-      break;
-    case 'error':
-      setStatus('出错', false);
-      addLog('step-failed', '❌ 错误', msg.message);
-      planActions.style.display = 'none';
-      break;
-  }
-}
-
-function renderPlan(plan) {
-  planEmpty.style.display = 'none';
-  planBody.querySelectorAll('.plan-goal, .step-item').forEach(el => el.remove());
-
-  const goalEl = document.createElement('div');
-  goalEl.className = 'plan-goal';
-  goalEl.textContent = '目标：' + plan.goal;
-  planBody.appendChild(goalEl);
-
-  for (const step of plan.steps) {
-    const el = document.createElement('div');
-    el.className = 'step-item';
-    el.id = `step-${step.id}`;
-    el.innerHTML = `
-      <div class="step-header">
-        <div class="step-num">${step.id}</div>
-        <div class="step-title">${esc(step.title)}</div>
-        <div class="step-tool">${esc(step.tool)}</div>
-      </div>
-      <div class="step-reason">${esc(step.reason)}</div>
-    `;
-    planBody.appendChild(el);
-  }
-
-  planActions.style.display = 'flex';
-  approveBtn.disabled = false;
-  rejectBtn.disabled = false;
-  hideRejectInput();
-}
-
-function updateStepUI(stepId, state) {
-  const el = document.getElementById(`step-${stepId}`);
-  if (el) el.className = 'step-item ' + state;
-}
-
-function addLog(type, label, content) {
-  const item = document.createElement('div');
-  item.className = `log-item ${type}`;
-  const labelEl = document.createElement('div');
-  labelEl.className = 'log-label';
-  labelEl.textContent = label;
-  item.appendChild(labelEl);
-  if (content) {
-    const c = document.createElement('div');
-    c.className = 'log-content';
-    c.textContent = content;
-    item.appendChild(c);
-  }
-  execLog.appendChild(item);
-  execLog.parentElement.scrollTop = execLog.parentElement.scrollHeight;
-}
-
-function approvePlan() {
-  if (!currentPlan) return;
-  approveBtn.disabled = true;
-  rejectBtn.disabled = true;
-  send({ type: 'plan_approved' });
-}
-
-function toggleReject() {
-  rejectInput.classList.toggle('visible');
-  rejectConfirmRow.style.display = rejectInput.classList.contains('visible') ? 'flex' : 'none';
-}
-
-function hideRejectInput() {
-  rejectInput.classList.remove('visible');
-  rejectConfirmRow.style.display = 'none';
-  rejectInput.value = '';
-}
-
-function submitReject() {
-  const feedback = rejectInput.value.trim();
-  approveBtn.disabled = true;
-  rejectBtn.disabled = true;
-  hideRejectInput();
-  send({ type: 'plan_rejected', feedback });
-}
-
-function sendGoal() {
-  const text = inputEl.value.trim();
-  if (!text || busy) return;
-  inputEl.value = '';
-  inputEl.style.height = 'auto';
-  execLog.innerHTML = '';
-  send({ type: 'chat', content: text });
-}
-
-function esc(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendGoal(); }
-});
-inputEl.addEventListener('input', () => {
-  inputEl.style.height = 'auto';
-  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
-});
-
-connect();
-</script>
+<script type="module" src="/app.js"></script>
 </body>
 </html>

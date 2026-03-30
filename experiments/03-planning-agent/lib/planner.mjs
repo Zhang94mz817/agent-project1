@@ -1,10 +1,12 @@
+import "./runtime-env.mjs";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { join, dirname } from "path";
 import Anthropic from "@anthropic-ai/sdk";
+import { planToolNames, renderPlannerToolGuide } from "./tools.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const systemPrompt = readFileSync(join(__dirname, "../prompts/plan.md"), "utf-8");
+const baseSystemPrompt = readFileSync(join(__dirname, "../prompts/plan.md"), "utf-8");
 
 // create_plan 工具的 schema，强制 Claude 输出结构化计划
 const createPlanTool = {
@@ -27,7 +29,7 @@ const createPlanTool = {
             title: { type: "string", description: "步骤标题（中文，简洁描述做什么）" },
             tool: {
               type: "string",
-              enum: ["web_fetch", "calculator", "read_file", "get_current_time", "summarize", "none"],
+              enum: planToolNames,
               description: "该步骤使用的工具",
             },
             input: {
@@ -60,7 +62,7 @@ export async function createPlan(userGoal, feedback = null) {
   const response = await client.messages.create({
     model: "anthropic/claude-sonnet-4.6",
     max_tokens: 1024,
-    system: systemPrompt,
+    system: `${baseSystemPrompt}\n\n${renderPlannerToolGuide()}`,
     tools: [createPlanTool],
     tool_choice: { type: "tool", name: "create_plan" },
     messages: [{ role: "user", content: userMessage }],
@@ -69,5 +71,41 @@ export async function createPlan(userGoal, feedback = null) {
   const toolUse = response.content.find((b) => b.type === "tool_use");
   if (!toolUse) throw new Error("Planner 未返回计划");
 
-  return toolUse.input;
+  return normalizePlan(toolUse.input, userGoal);
+}
+
+export function normalizePlan(plan, fallbackGoal) {
+  if (!plan || typeof plan !== "object") {
+    throw new Error("Planner 返回格式无效");
+  }
+
+  if (!Array.isArray(plan.steps) || plan.steps.length === 0) {
+    throw new Error("Planner 未返回有效步骤");
+  }
+
+  return {
+    goal: normalizeText(plan.goal, fallbackGoal),
+    steps: plan.steps.map((step, index) => normalizeStep(step, index)),
+  };
+}
+
+function normalizeStep(step, index) {
+  const id = index + 1;
+  const tool = planToolNames.includes(step?.tool) ? step.tool : "none";
+
+  return {
+    id,
+    title: normalizeText(step?.title, `步骤 ${id}`),
+    tool,
+    input: isPlainObject(step?.input) ? step.input : {},
+    reason: normalizeText(step?.reason, "根据目标推进任务"),
+  };
+}
+
+function normalizeText(value, fallback) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

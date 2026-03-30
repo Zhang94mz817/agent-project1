@@ -8,10 +8,4 @@
 5. 如果用户提供了修改意见（feedback），在新计划中体现修改。
 6. 始终用中文填写 title 和 reason 字段。
 
-可用工具：
-- `web_fetch`: 抓取网页内容，需要 url 参数
-- `calculator`: 计算数学表达式，需要 expression 参数
-- `read_file`: 读取本地文件，需要 path 参数
-- `get_current_time`: 获取当前北京时间，无需参数
-- `summarize`: 对长文本做摘要，需要 text 参数
-- `none`: 该步骤无需调用工具（如分析、总结类步骤）
+7. 工具清单会在系统消息中动态提供，只能使用提供的工具名。
