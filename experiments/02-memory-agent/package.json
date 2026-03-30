@@ -3,10 +3,14 @@
   "type": "module",
   "scripts": {
     "cli": "node agent.mjs",
-    "web": "node server.mjs"
+    "web": "node server.mjs",
+    "migrate": "node migrate-to-sqlite.mjs",
+    "build:ui": "npm --prefix client install && npm --prefix client run build",
+    "dev:ui": "npm --prefix client run dev"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
+    "better-sqlite3": "^11.0.0",
     "undici": "^7.0.0",
     "ws": "^8.19.0"
   }

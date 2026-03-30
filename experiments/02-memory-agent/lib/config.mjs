@@ -6,13 +6,11 @@ import { ProxyAgent, setGlobalDispatcher } from "undici";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const APP_DIR = resolve(__dirname, "..");
 export const DATA_DIR = resolve(APP_DIR, "data");
-export const USERS_DIR = resolve(DATA_DIR, "users");
-export const PROJECTS_DIR = resolve(DATA_DIR, "projects");
-export const SESSIONS_DIR = resolve(DATA_DIR, "sessions");
+export const DB_PATH = resolve(DATA_DIR, "memory.db");
 export const PROMPTS_DIR = resolve(APP_DIR, "prompts");
 export const SYSTEM_PROMPT_FILE = resolve(PROMPTS_DIR, "system.md");
-export const LEGACY_MEMORY_FILE = resolve(APP_DIR, "memory.json");
-export const HTML_FILE = resolve(APP_DIR, "index.html");
+export const CLIENT_DIST_DIR = resolve(APP_DIR, "client", "dist");
+export const HTML_FILE = resolve(CLIENT_DIST_DIR, "index.html");
 export const ENV_FILE = resolve(APP_DIR, ".env");
 
 export const DEFAULT_USER_ID = process.env.MEMORY_USER_ID || "default";

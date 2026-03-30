@@ -94,6 +94,43 @@ export const tools = [
       required: ["url"],
     },
   },
+  {
+    name: "memory_upsert",
+    description: "将重要事实写入长期记忆（user 或 project 层）。用于主动记住用户偏好、姓名、项目背景等值得跨会话保留的信息。",
+    input_schema: {
+      type: "object",
+      properties: {
+        layer: {
+          type: "string",
+          enum: ["user", "project"],
+          description: "写入哪一层：user（用户相关）或 project（项目相关）",
+        },
+        key: { type: "string", description: "事实的键，例如 profile.name、preference.language、project.stack" },
+        value: { type: "string", description: "事实的值" },
+        confidence: {
+          type: "string",
+          enum: ["high", "medium", "low"],
+          description: "置信度，默认 high",
+        },
+      },
+      required: ["layer", "key", "value"],
+    },
+  },
+  {
+    name: "memory_query",
+    description: "查询当前的长期记忆内容，包括 user profile、user facts 和 project facts。",
+    input_schema: {
+      type: "object",
+      properties: {
+        layer: {
+          type: "string",
+          enum: ["user", "project", "all"],
+          description: "查询哪一层，默认 all",
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 export function listTools() {
