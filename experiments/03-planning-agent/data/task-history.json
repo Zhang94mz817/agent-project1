@@ -1,0 +1,26 @@
+[
+  {
+    "id": "559a834a-41a1-4bef-8ad5-00a20dde8e30",
+    "goal": "查看当前google",
+    "status": "failed",
+    "createdAt": "2026-03-31T08:45:49.358Z",
+    "updatedAt": "2026-03-31T08:45:49.363Z",
+    "completedAt": "2026-03-31T08:45:49.363Z",
+    "plan": null,
+    "results": [],
+    "reflection": null,
+    "error": "规划失败: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+  },
+  {
+    "id": "51b9c510-9cf4-43b5-9c84-37f171b77905",
+    "goal": "查询当前时间，然后计算 2 的 10 次方",
+    "status": "failed",
+    "createdAt": "2026-03-31T08:43:37.738Z",
+    "updatedAt": "2026-03-31T08:43:37.741Z",
+    "completedAt": "2026-03-31T08:43:37.741Z",
+    "plan": null,
+    "results": [],
+    "reflection": null,
+    "error": "规划失败: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+  }
+]
